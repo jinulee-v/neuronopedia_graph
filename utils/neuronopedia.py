@@ -24,7 +24,6 @@ def getResponse(conn):
         # Send request to the new URL
         conn.request("GET", url.path, headers=headers)
         res = conn.getresponse()
-
     data=res.read()
     result = data.decode("utf-8")
     result = json.loads(result)
@@ -38,14 +37,19 @@ def get_neuronopedia_activations(model, layer, index):
     if f"{model}_{layer}_{index}.json" in os.listdir(CACHE_DIR):
         try:
             with open(f"{CACHE_DIR}/{model}_{layer}_{index}.json", "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                if data is not None:
+                    return data
         except:
             pass
     conn = http.client.HTTPSConnection("www.neuronpedia.org")
     conn.request("GET", "/api/feature/"+model+"/"+layer+"/"+str(index), headers=headers)
     res = getResponse(conn)
+
     with open(f"{CACHE_DIR}/{model}_{layer}_{index}.json", "w") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
+    if res is None:
+        print(f"Failed to get neuronopedia activations for {model}/{layer}/{index}")
     return res
 
 def extract_neuronopedia_features(model, layer, num_features, max_features):
@@ -57,7 +61,14 @@ def extract_neuronopedia_features(model, layer, num_features, max_features):
     fresh_is = set()
     cnt=0
     for i in tqdm(rand_subset):
-        resh = get_neuronopedia_activations(model, layer, i)
+        try:
+            resh = get_neuronopedia_activations(model, layer, i)
+        except KeyboardInterrupt:
+            exit()
+        except Exception as e:
+            print(f"Failed to get neuronopedia activations for {model}/{layer}/{i}")
+            print(e)
+            continue
         activationsh = resh['activations']
         for sentence in activationsh:
             tokens = sentence['tokens']

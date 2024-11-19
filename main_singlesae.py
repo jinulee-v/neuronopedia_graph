@@ -9,7 +9,7 @@ from utils.graph import create_graph, visualize_graph
 
 def main(args):
     resh = get_neuronopedia_activations(args.model, args.layer, 42)
-    print(json.dumps(resh["explanations"], indent=2))
+    # print(json.dumps(resh["explanations"], indent=2))
 
     sentences, activations, lats_for_sents = extract_neuronopedia_features(args.model, args.layer, args.num_features, args.max_features)
     

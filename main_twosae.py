@@ -24,9 +24,9 @@ if __name__ == '__main__':
 
     # SAE configuration
     parser.add_argument('--model', type=str, default='gemma-2-2b', help='Model name')
-    parser.add_argument('--layer_from', type=str, default='20-gemmascope-res-16k', help='Layer name')
+    parser.add_argument('--layer_from', type=str, default='20-gemmascope-res-65k', help='Layer name')
     parser.add_argument('--layer_to', type=str, default='20-gemmascope-res-16k', help='Layer name')
-    parser.add_argument('--max_features_from', type=int, default=16384, help='Number of max features of the given model/layer/index')
+    parser.add_argument('--max_features_from', type=int, default=65536, help='Number of max features of the given model/layer/index')
     parser.add_argument('--max_features_to', type=int, default=16384, help='Number of max features of the given model/layer/index')
 
     # Graph configuration
