@@ -7,6 +7,7 @@ dotenv.load_dotenv()
 
 from tqdm import tqdm
 import random
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 headers = { 'X-Api-Key':  os.environ["NEURONOPEDIA_API_KEY"] }
 
@@ -58,32 +59,30 @@ def extract_neuronopedia_features(model, layer, num_features, max_features):
         rand_subset = range(max_features)
     else:
         rand_subset = random.sample(range(max_features), k=num_features)
-    fresh_is = set()
-    cnt=0
-    for i in tqdm(rand_subset):
-        try:
-            resh = get_neuronopedia_activations(model, layer, i)
-        except KeyboardInterrupt:
-            exit()
-        except Exception as e:
-            print(f"Failed to get neuronopedia activations for {model}/{layer}/{i}")
-            print(e)
-            continue
-        activationsh = resh['activations']
-        for sentence in activationsh:
-            tokens = sentence['tokens']
-            sent = '¢'.join(tokens)
-            if sent not in sentences: sentences[sent] = (len(sentences), 1)
-            else: sentences[sent] = (sentences[sent][0], sentences[sent][1]+1)
-            idx = sentences[sent][0] # sentence index
-            nonzero_idxes = [j for j in range(len(sentence['values'])) if sentence['values'][j] > 0]
-            if len(nonzero_idxes) > 0:
-                activations[i] = activations.get(i, set())
-                for x in nonzero_idxes:
-                    activations[i].add((idx, x))
-                    lats_for_sents[(idx, x)] = lats_for_sents.get((idx, x), set())
-                    lats_for_sents[(idx, x)].add(i)
-                fresh_is.add(i)
-        cnt+=1
+
+    with ProcessPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(get_neuronopedia_activations, model, layer, i): i for i in rand_subset}
+        for future in tqdm(as_completed(futures), total=len(futures)):
+            try:
+                result = future.result()
+                activationsh = result["activations"]
+                feature_idx = int(result["index"])
+                for sentence in activationsh:
+                    tokens = sentence['tokens']
+                    sent = '¢'.join(tokens)
+                    if sent not in sentences: sentences[sent] = (len(sentences), 1)
+                    else: sentences[sent] = (sentences[sent][0], sentences[sent][1]+1)
+                    idx = sentences[sent][0] # sentence index
+                    nonzero_idxes = [j for j in range(len(sentence['values'])) if sentence['values'][j] > 0]
+                    if len(nonzero_idxes) > 0:
+                        activations[feature_idx] = activations.get(feature_idx, set())
+                        for x in nonzero_idxes:
+                            activations[feature_idx].add((idx, x))
+                            lats_for_sents[(idx, x)] = lats_for_sents.get((idx, x), set())
+                            lats_for_sents[(idx, x)].add(feature_idx)
+                        # fresh_is.add(i)
+            except Exception as e:
+                print(e.__class__, e)
+                exit()
 
     return sentences, activations, lats_for_sents
