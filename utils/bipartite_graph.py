@@ -12,9 +12,9 @@ def visualize_bipartite_graph(G: nx.Graph, title='Graph', save_path="graphs", th
     for u, v, data in G.edges(data=True):
         strength = data['weight']
         if strength > thresh:
-            net.add_node(-u, label=u, title=u, shape='box', size=20, color="skyblue")
+            net.add_node("-"+u, label=u, title=u, shape='box', size=20, color="skyblue")
             net.add_node(v, label=v, title=v, shape='box', size=20, color="pink")
-            net.add_edge(-u, v, width=strength * 10, label=f"{strength:.3f}")  # Adjust multiplier for thickness scaling
+            net.add_edge("-"+u, v, width=strength * 10, label=f"{strength:.3f}")  # Adjust multiplier for thickness scaling
 
     # Show the interactive graph and save it as an HTML string
     net.show(".graph.html")
