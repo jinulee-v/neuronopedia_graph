@@ -1,5 +1,5 @@
-.cache
 .env
+data
 graphs
 
 */__pycache__
