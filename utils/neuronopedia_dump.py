@@ -1,9 +1,11 @@
 import json
 import os
 from tqdm import tqdm
+from collections import defaultdict
+import gc
 
 def extract_neuronopedia_features(model, layer, num_features, max_features, parallel=False):
-    descriptions, sentences, activations, lats_for_sents = {}, {}, {}, {}
+    descriptions, activations, lats_for_sents = {}, defaultdict(set), defaultdict(set)
     assert num_features == max_features
 
     base_dir = os.path.join("data", model, layer)
@@ -17,24 +19,19 @@ def extract_neuronopedia_features(model, layer, num_features, max_features, para
         with open(file) as f:
             results = json.load(f)
         for result in results:
-            activationsh = result["activations"]
             feature_idx = int(result["index"])
+            # Extract feature description
             if len(result["explanations"]) > 0:
                 descriptions[feature_idx] = result["explanations"][0]["description"]
             else:
                 descriptions[feature_idx] = "No description available"
-            for sentence in activationsh:
-                tokens = sentence['tokens']
-                sent = '¢'.join(tokens)
-                if sent not in sentences: sentences[sent] = (len(sentences), 1)
-                else: sentences[sent] = (sentences[sent][0], sentences[sent][1]+1)
-                idx = sentences[sent][0] # sentence index
-                nonzero_idxes = [j for j in range(len(sentence['values'])) if sentence['values'][j] > 0]
-                if len(nonzero_idxes) > 0:
-                    activations[feature_idx] = activations.get(feature_idx, set())
-                    for x in nonzero_idxes:
-                        activations[feature_idx].add((idx, x))
-                        lats_for_sents[(idx, x)] = lats_for_sents.get((idx, x), set())
-                        lats_for_sents[(idx, x)].add(feature_idx)
+            # Create map between sentence-token pair and feature
+            for sentence in result["activations"]:
+                sent_id = hash('¢'.join(sentence['tokens'])) # imperfect hash function for optimization
+                for j, act_val in enumerate(sentence['values']):
+                    if act_val > 0:
+                        activations[feature_idx].add((sent_id, j, act_val))
+                        lats_for_sents[(sent_id, j)].add(feature_idx)
+        del results
 
     return descriptions, activations, lats_for_sents
